@@ -1,17 +1,28 @@
-FROM node:16.15.1
+FROM node:16.15.1-alpine as builder
 
 WORKDIR /app
 
-ADD package.json /app
-ADD package-lock.json /app
+COPY . /app
 
-ARG NODE_ENV
-ENV NODE_ENV $NODE_ENV
+RUN npm i \ 
+    && npm run build
 
-ADD . /app
-RUN npm run build \
-    && chmod +x ./scripts/entry.sh
+FROM node:16.15.1-alpine
 
-ENTRYPOINT ["./scripts/entry.sh" ]
+WORKDIR /app
+
+COPY  package*.json tsconfig*.json /app/
+
+COPY  scripts/ ./scripts
+
+COPY  config/ ./config
+
+COPY  --from=builder /app/dist ./dist
+
+COPY  --from=builder /app/node_modules ./node_modules
+
+RUN chmod +x ./scripts/entry.sh
+
+ENTRYPOINT ["./scripts/entry.sh"]
 
 EXPOSE 3000
